@@ -1,0 +1,5 @@
+local sqlite_proxy = require("santoku.web.sqlite.proxy")
+local app = require("tokuboilerplate")
+sqlite_proxy("/bundle.js", function ()
+  print(app.hello())
+end)

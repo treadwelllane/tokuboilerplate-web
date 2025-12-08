@@ -1,0 +1,18 @@
+<%
+  local serialize = require("santoku.serialize")
+  local fs = require("santoku.fs")
+  local mch = require("santoku.mustache")
+  local loader = fs.runfile(fs.join(root_dir, "res/web/template-loader.lua"))
+  local partials = loader(readfile, root_dir)
+  local body_rendered = mch(partials["body"], { partials = partials })({})
+  return require("santoku.web.pwa.index")({
+    title = client.opts.title,
+    description = client.opts.description,
+    theme_color = client.opts.theme_color,
+    sw = "/bundle.js",
+    bundle = "/bundle.js",
+    cached_files = client.opts.cached_files,
+    head = client.opts.head,
+    body_tag = body_rendered,
+  })
+%>
