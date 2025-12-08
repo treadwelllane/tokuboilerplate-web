@@ -1,3 +1,14 @@
+<%
+  local fs = require("santoku.fs")
+  local tbl = require("santoku.table")
+  local index = require("santoku.web.pwa.index")
+  local partials = fs.runfile(fs.join(root_dir, "res/web/template-loader.lua"))(readfile, root_dir)
+  index_html = index(tbl.merge({}, client.opts.pwa, {
+    initial = false,
+    body = partials["body-app"](),
+  }))
+%>
+
 local js = require("santoku.web.js")
 local val = require("santoku.web.val")
 local err = require("santoku.error")
@@ -66,8 +77,8 @@ return function (db, http)
 
   return {
 
-    ["^/app$"] = function (_, _, _, done)
-      return done(true, tpl["app"]())
+    ["^/$"] = function (_, _, _, done)
+      return done(true, [[<% return index_html, false %>]])
     end,
 
     ["^/numbers$"] = function (_, _, params, done)

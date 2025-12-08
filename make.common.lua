@@ -1,4 +1,7 @@
 local fs = require("santoku.fs")
+local num = require("santoku.num")
+local str = require("santoku.string")
+local arr = require("santoku.array")
 local sys = require("santoku.system")
 
 -- iOS icon/splash screen sizes (width, height, pixel ratio)
@@ -78,36 +81,19 @@ return {
         }
       },
       opts = {
-        title = "tokuboilerplate",
-        description = "A web app built with santoku",
-        theme_color = "#1e293b",
-        background_color = "#f5f5f5",
-        cached_files = {
-          "/",
-          "/index.html",
-          "/bundle.js",
-          "/bundle.wasm",
-          "/favicon.svg",
-          "/htmx.min.js",
-          "/idiomorph-ext.min.js",
-          "/icon-192.png",
-          "/icon-512.png",
-          "/index.css",
-          "/manifest.json",
-          "/sqlite3.wasm",
-          "/roboto-300.woff2",
-          "/roboto-400.woff2",
-          "/roboto-500.woff2",
-          "/roboto-700.woff2",
-        },
-        deferred_scripts = {
-          "/htmx.min.js",
-          "/idiomorph-ext.min.js",
-        },
-        head = [[
-          <meta name="htmx-config" content='{"defaultSwapStyle":"morph:outerHTML"}'>
-          <link rel="stylesheet" href="/index.css">
-        ]]
+        pwa = {
+          title = "tokuboilerplate",
+          name = "Toku Boilerplate",
+          description = "A web app built with santoku",
+          theme_color = "#1e293b",
+          background_color = "#f5f5f5",
+          head = [[
+            <meta name="htmx-config" content='{"defaultSwapStyle":"morph:outerHTML"}'>
+            <link rel="stylesheet" href="/index.css">
+            <script src="/htmx.min.js"></script>
+            <script src="/idiomorph-ext.min.js"></script>
+          ]]
+        }
       },
     },
 
@@ -159,8 +145,8 @@ return {
         })
       end)
       local icon_svg_src = fs.join(client_env.build_dir, "res/icon.svg")
-      local theme = envs.root.client.opts.theme_color
-      local bg = envs.root.client.opts.background_color or theme
+      local theme = envs.root.client.opts.pwa.theme_color
+      local bg = envs.root.client.opts.pwa.background_color
       local favicon_svg = fs.join(client_env.public_dir, "favicon.svg")
       submake.target({ client_env.target }, { favicon_svg })
       submake.target({ favicon_svg }, { icon_svg_src }, function ()
@@ -176,7 +162,7 @@ return {
             "-o", icon_file, icon_svg_src
           })
         end)
-        table.insert(manifest_icons, {
+        arr.push(manifest_icons, {
           src = "/icon-" .. size .. ".png",
           sizes = size .. "x" .. size,
           type = "image/png"
@@ -197,25 +183,25 @@ return {
         local splash_file = fs.join(client_env.public_dir, "splash-" .. w .. "x" .. h .. "@" .. dpr .. "x.png")
         submake.target({ client_env.target }, { splash_file })
         submake.target({ splash_file }, { icon_svg_src }, function ()
-          local icon_size = math.min(pw, ph) * 0.3
+          local icon_size = num.min(pw, ph) * 0.3
           sys.execute({
-            "sh", "-c", string.format(
+            "sh", "-c", str.format(
               "convert -size %dx%d xc:'%s' \\( %s -resize %dx%d \\) -gravity center -composite %s",
               pw, ph, bg, icon_svg_src, icon_size, icon_size, splash_file
             )
           })
         end)
-        table.insert(splash_opts, {
+        arr.push(splash_opts, {
           width = w,
           height = h,
           dpr = dpr,
           src = "/splash-" .. w .. "x" .. h .. "@" .. dpr .. "x.png"
         })
       end
-      envs.root.client.opts.manifest_icons = manifest_icons
-      envs.root.client.opts.favicon_svg = "/favicon.svg"
-      envs.root.client.opts.ios_icon = "/apple-touch-icon.png"
-      envs.root.client.opts.splash_screens = splash_opts
+      envs.root.client.opts.pwa.manifest_icons = manifest_icons
+      envs.root.client.opts.pwa.favicon_svg = "/favicon.svg"
+      envs.root.client.opts.pwa.ios_icon = "/apple-touch-icon.png"
+      envs.root.client.opts.pwa.splash_screens = splash_opts
     end,
 
   }
