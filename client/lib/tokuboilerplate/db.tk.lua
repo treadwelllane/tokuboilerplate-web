@@ -352,7 +352,7 @@ return sqlite_worker("/tokuboilerplate.db", function (ok, db, callback)
       redirect_page = page - 1
     end
     return {
-      html = M.get_numbers(page) .. get_sync_state_oob(),
+      html = M.get_numbers(redirect_page or page) .. get_sync_state_oob(),
       redirect_page = redirect_page
     }
   end

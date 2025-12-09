@@ -1,3 +1,4 @@
+require("santoku.web.version").check("<% return version %>")
 local db = require("tokuboilerplate.db.loaded")
 
 local auth = ngx.var.http_authorization

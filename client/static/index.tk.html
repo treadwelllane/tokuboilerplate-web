@@ -3,8 +3,12 @@
   local tbl = require("santoku.table")
   local index = require("santoku.web.pwa.index")
   local partials = fs.runfile(fs.join(root_dir, "res/web/template-loader.lua"))(readfile, root_dir)
-  return index(tbl.merge({}, client.opts.pwa, {
+  return index(tbl.merge({}, client.pwa, {
+    sw = "/sw.js",
     initial = true,
+    head = [[
+      <link rel="stylesheet" href="/]] .. hashed("index.css") .. [[">
+    ]],
     body = partials["body-initial"](),
   }))
 %>

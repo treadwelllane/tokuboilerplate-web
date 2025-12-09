@@ -1,5 +1,9 @@
-@import "../../res/tailwind/theme.css";
-@source "../../res/web/templates/*.html";
+@view-transition {
+  navigation: auto;
+}
+
+@import "<% return root_dir %>/res/tailwind/theme.css";
+@source "<% return root_dir %>/res/web/templates/*.html";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -32,28 +36,28 @@
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: url('/roboto-300.woff2') format('woff2');
+  src: url('/<% return hashed("roboto-300.woff2") %>') format('woff2');
 }
 @font-face {
   font-family: 'Roboto';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/roboto-400.woff2') format('woff2');
+  src: url('/<% return hashed("roboto-400.woff2") %>') format('woff2');
 }
 @font-face {
   font-family: 'Roboto';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/roboto-500.woff2') format('woff2');
+  src: url('/<% return hashed("roboto-500.woff2") %>') format('woff2');
 }
 @font-face {
   font-family: 'Roboto';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('/roboto-700.woff2') format('woff2');
+  src: url('/<% return hashed("roboto-700.woff2") %>') format('woff2');
 }
 
 html, body {

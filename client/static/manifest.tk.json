@@ -1,5 +1,5 @@
 <%
   local tbl = require("santoku.table")
   local manifest = require("santoku.web.pwa.manifest")
-  return manifest(client.opts.pwa)
+  return manifest(client.pwa)
 %>

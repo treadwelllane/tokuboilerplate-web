@@ -5,7 +5,7 @@ return tbl.merge(
   fs.runfile("make.common.lua"), {
     env = {
       client = {
-        -- files = false,
+        files = false,
         ldflags = {
           "-sWASM_BIGINT",
           "-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE='$stringToNewUTF8'",

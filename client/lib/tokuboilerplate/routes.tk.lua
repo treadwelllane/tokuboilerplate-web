@@ -3,8 +3,19 @@
   local tbl = require("santoku.table")
   local index = require("santoku.web.pwa.index")
   local partials = fs.runfile(fs.join(root_dir, "res/web/template-loader.lua"))(readfile, root_dir)
-  index_html = index(tbl.merge({}, client.opts.pwa, {
+  bundle_js_hashed = "/" .. hashed("bundle.js")
+  bundle_wasm_hashed = "/" .. hashed("bundle.wasm")
+  index_html = index(tbl.merge({}, client.pwa, {
+    sw = true,
     initial = false,
+    head = [[
+      <meta name="htmx-config" content='{"defaultSwapStyle":"morph:outerHTML"}'>
+      <meta name="bundle-js" content="{{bundle\.js}}">
+      <link rel="stylesheet" href="{{index\.css}}">
+      <script src="{{htmx\.min\.js}}"></script>
+      <script src="{{idiomorph-ext\.min\.js}}"></script>
+      <script src="{{bundle\.js}}"></script>
+    ]],
     body = partials["body-app"](),
   }))
 %>
@@ -13,10 +24,12 @@ local js = require("santoku.web.js")
 local val = require("santoku.web.val")
 local err = require("santoku.error")
 local async = require("santoku.async")
-local tpl = require("tokuboilerplate.web.templates")
+local mch = require("santoku.mustache")
 
 local Headers = js.Headers
 local Request = js.Request
+
+local index_html = mch([[<% return index_html, false %>]])(val.lua(js.HASH_MANIFEST, true))
 
 return function (db, http)
 
@@ -78,7 +91,7 @@ return function (db, http)
   return {
 
     ["^/$"] = function (_, _, _, done)
-      return done(true, [[<% return index_html, false %>]])
+      return done(true, index_html, "text/html")
     end,
 
     ["^/numbers$"] = function (_, _, params, done)
@@ -103,7 +116,7 @@ return function (db, http)
           return done(false, result)
         end
         if result.redirect_page then
-          return done(true, result.html, nil, { ["HX-Redirect"] = "/?page=" .. result.redirect_page })
+          return done(true, result.html, nil, { ["HX-Push-Url"] = "/?page=" .. result.redirect_page })
         end
         return done(true, result.html)
       end)

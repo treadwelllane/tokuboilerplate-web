@@ -1,3 +1,4 @@
+require("santoku.web.version").check("<% return version %>")
 local tpl = require("tokuboilerplate.web.templates")
 local db = require("tokuboilerplate.db.loaded")
 

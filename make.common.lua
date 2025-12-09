@@ -30,14 +30,13 @@ return {
 
     name = "tokuboilerplate",
     version = "0.0.1-1",
-    version_check = true,
     dependencies = {
       "lua == 5.1",
       "santoku >= 0.0.305-1",
     },
     build = {
       dependencies = {
-        "santoku-web >= 0.0.394-1",
+        "santoku-web >= 0.0.400-1",
       }
     },
 
@@ -45,21 +44,13 @@ return {
       dependencies = {
         "lua == 5.1",
         "santoku >= 0.0.305-1",
+        "santoku-web >= 0.0.400-1",
         "santoku-mustache >= 0.0.13-1",
         "santoku-sqlite >= 0.0.27-1",
         "santoku-sqlite-migrate >= 0.0.17-1",
         "lsqlite3 >= 0.9.6-1",
         "argparse >= 0.7.1-1",
       },
-      domain = "localhost",
-      port = "8080",
-      workers = "auto",
-      ssl = false,
-      init = "tokuboilerplate.web.init",
-      routes = {
-        { "POST", "/session/create", "tokuboilerplate.web.session-create" },
-        { "POST", "/sync", "tokuboilerplate.web.sync" },
-      }
     },
 
     client = {
@@ -67,7 +58,7 @@ return {
       dependencies = {
         "lua == 5.1",
         "santoku >= 0.0.305-1",
-        "santoku-web >= 0.0.394-1",
+        "santoku-web >= 0.0.400-1",
         "santoku-http >= 0.0.18-1",
         "santoku-sqlite >= 0.0.27-1",
         "santoku-sqlite-migrate >= 0.0.17-1",
@@ -76,30 +67,36 @@ return {
         ["bundle$"] = {
           ldflags = {
             "--pre-js", "res/pre.js",
-            "--extern-pre-js", "deps/sqlite/jswasm/sqlite3.js"
+            "--extern-pre-js", "res/sqlite/sqlite3.js"
           }
         }
       },
-      opts = {
-        pwa = {
-          title = "tokuboilerplate",
-          name = "Toku Boilerplate",
-          description = "A web app built with santoku",
-          theme_color = "#1e293b",
-          background_color = "#f5f5f5",
-          head = [[
-            <meta name="htmx-config" content='{"defaultSwapStyle":"morph:outerHTML"}'>
-            <link rel="stylesheet" href="/index.css">
-            <script src="/htmx.min.js"></script>
-            <script src="/idiomorph-ext.min.js"></script>
-          ]]
-        }
+      pwa = {
+        title = "tokuboilerplate",
+        name = "Toku Boilerplate",
+        description = "A web app built with santoku",
+        theme_color = "#1e293b",
+        background_color = "#f5f5f5",
       },
     },
 
-    configure = function (submake, envs)
+    nginx = {
+      domain = "localhost",
+      port = "8080",
+      workers = "auto",
+      modules = {
+        "tokuboilerplate.web.init",
+        "tokuboilerplate.web.session-create",
+        "tokuboilerplate.web.sync",
+      },
+    },
+
+    configure = function (submake, envs, register_public_file)
       local client_env = envs.client
       if not client_env then return end
+      local function pwa_hashed(filename)
+        return "/{{" .. str.gsub(filename, "%.", "\\\\.") .. "}}"
+      end
       local htmx_file = fs.join(client_env.public_dir, "htmx.min.js")
       submake.target({ client_env.target }, { htmx_file })
       submake.target({ htmx_file }, {}, function ()
@@ -108,6 +105,7 @@ return {
           "https://unpkg.com/htmx.org@2.0.7/dist/htmx.min.js"
         })
       end)
+      register_public_file("htmx.min.js")
       local idiomorph_file = fs.join(client_env.public_dir, "idiomorph-ext.min.js")
       submake.target({ client_env.target }, { idiomorph_file })
       submake.target({ idiomorph_file }, {}, function ()
@@ -116,6 +114,29 @@ return {
           "https://unpkg.com/idiomorph@0.7.4/dist/idiomorph-ext.min.js"
         })
       end)
+      register_public_file("idiomorph-ext.min.js")
+      local nested_env = client_env.environment == "test" and "test" or "build"
+      local bundler_cwd = fs.join(client_env.work_dir, "build", "default-wasm", nested_env)
+      local sqlite3_js = fs.join(bundler_cwd, "res/sqlite/sqlite3.js")
+      local bundle_target = fs.join(client_env.bundler_post_dir, "bundle")
+      submake.target({ bundle_target }, { sqlite3_js })
+      submake.target({ sqlite3_js }, {}, function ()
+        fs.mkdirp(fs.dirname(sqlite3_js))
+        sys.execute({
+          "curl", "-sL", "-o", sqlite3_js,
+          "https://unpkg.com/@sqlite.org/sqlite-wasm@3.51.1-build2/sqlite-wasm/jswasm/sqlite3.js"
+        })
+      end)
+      local sqlite3_wasm = fs.join(client_env.public_dir, "sqlite3.wasm")
+      submake.target({ client_env.target }, { sqlite3_wasm })
+      submake.target({ sqlite3_wasm }, {}, function ()
+        fs.mkdirp(fs.dirname(sqlite3_wasm))
+        sys.execute({
+          "curl", "-sL", "-o", sqlite3_wasm,
+          "https://unpkg.com/@sqlite.org/sqlite-wasm@3.51.1-build2/sqlite-wasm/jswasm/sqlite3.wasm"
+        })
+      end)
+      register_public_file("sqlite3.wasm")
       local roboto_weights = { "300", "400", "500", "700" }
       local roboto_urls = {
         ["300"] = "https://fonts.gstatic.com/s/roboto/v32/KFOlCnqEu92Fr1MmSU5fCxc4EsA.woff2",
@@ -131,9 +152,10 @@ return {
             "curl", "-sL", "-o", font_file, roboto_urls[weight]
           })
         end)
+        register_public_file("roboto-" .. weight .. ".woff2")
       end
       local css_out = fs.join(client_env.public_dir, "index.css")
-      local css_in = fs.join(client_env.root_dir, "client/res/index.css")
+      local css_in = fs.join(client_env.build_dir, "res/index.css")
       submake.target({ client_env.target }, { css_out })
       submake.target({ css_out }, { css_in }, function ()
         sys.execute({
@@ -144,14 +166,15 @@ return {
           "--minify"
         })
       end)
-      local icon_svg_src = fs.join(client_env.build_dir, "res/icon.svg")
-      local theme = envs.root.client.opts.pwa.theme_color
-      local bg = envs.root.client.opts.pwa.background_color
+      register_public_file("index.css")
+      local icon_svg_src = fs.join(client_env.work_dir, "res/icon.svg")
+      local bg = envs.root.client.pwa.background_color
       local favicon_svg = fs.join(client_env.public_dir, "favicon.svg")
       submake.target({ client_env.target }, { favicon_svg })
       submake.target({ favicon_svg }, { icon_svg_src }, function ()
         fs.writefile(favicon_svg, fs.readfile(icon_svg_src))
       end)
+      register_public_file("favicon.svg")
       local manifest_icons = {}
       for _, size in ipairs(icon_sizes) do
         local icon_file = fs.join(client_env.public_dir, "icon-" .. size .. ".png")
@@ -162,8 +185,9 @@ return {
             "-o", icon_file, icon_svg_src
           })
         end)
+        register_public_file("icon-" .. size .. ".png")
         arr.push(manifest_icons, {
-          src = "/icon-" .. size .. ".png",
+          src = pwa_hashed("icon-" .. size .. ".png"),
           sizes = size .. "x" .. size,
           type = "image/png"
         })
@@ -176,11 +200,13 @@ return {
           "-o", apple_icon, icon_svg_src
         })
       end)
+      register_public_file("apple-touch-icon.png")
       local splash_opts = {}
       for _, spec in ipairs(splash_screens) do
         local w, h, dpr = spec[1], spec[2], spec[3]
         local pw, ph = w * dpr, h * dpr
-        local splash_file = fs.join(client_env.public_dir, "splash-" .. w .. "x" .. h .. "@" .. dpr .. "x.png")
+        local splash_name = "splash-" .. w .. "x" .. h .. "@" .. dpr .. "x.png"
+        local splash_file = fs.join(client_env.public_dir, splash_name)
         submake.target({ client_env.target }, { splash_file })
         submake.target({ splash_file }, { icon_svg_src }, function ()
           local icon_size = num.min(pw, ph) * 0.3
@@ -191,17 +217,34 @@ return {
             )
           })
         end)
+        register_public_file(splash_name)
         arr.push(splash_opts, {
           width = w,
           height = h,
           dpr = dpr,
-          src = "/splash-" .. w .. "x" .. h .. "@" .. dpr .. "x.png"
+          src = pwa_hashed(splash_name)
         })
       end
-      envs.root.client.opts.pwa.manifest_icons = manifest_icons
-      envs.root.client.opts.pwa.favicon_svg = "/favicon.svg"
-      envs.root.client.opts.pwa.ios_icon = "/apple-touch-icon.png"
-      envs.root.client.opts.pwa.splash_screens = splash_opts
+      envs.root.client.pwa.manifest_icons = manifest_icons
+      envs.root.client.pwa.favicon_svg = pwa_hashed("favicon.svg")
+      envs.root.client.pwa.ios_icon = pwa_hashed("apple-touch-icon.png")
+      envs.root.client.pwa.splash_screens = splash_opts
+      if client_env.static_files_ok then
+        local all_static_files = { htmx_file, idiomorph_file, sqlite3_wasm, css_out, favicon_svg, apple_icon }
+        for _, weight in ipairs(roboto_weights) do
+          arr.push(all_static_files, fs.join(client_env.public_dir, "roboto-" .. weight .. ".woff2"))
+        end
+        for _, size in ipairs(icon_sizes) do
+          arr.push(all_static_files, fs.join(client_env.public_dir, "icon-" .. size .. ".png"))
+        end
+        for _, spec in ipairs(splash_screens) do
+          local w, h, dpr = spec[1], spec[2], spec[3]
+          arr.push(all_static_files, fs.join(client_env.public_dir, "splash-" .. w .. "x" .. h .. "@" .. dpr .. "x.png"))
+        end
+        submake.target({ client_env.static_files_ok }, all_static_files, function ()
+          fs.touch(client_env.static_files_ok)
+        end)
+      end
     end,
 
   }
