@@ -32,7 +32,7 @@ run wget https://www.sqlite.org/2024/sqlite-autoconf-3470200.tar.gz && \
     cd sqlite-autoconf-3470200 && ./configure && make && make install && \
     cd / && rm -rf sqlite-autoconf-3470200*
 
-run luarocks install santoku-cli 0.0.322-1 && \
+run luarocks install santoku-cli 0.0.323-1 && \
     luarocks install lua-cjson && \
     luarocks install luacheck
 
