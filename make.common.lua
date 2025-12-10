@@ -32,24 +32,24 @@ return {
     version = "0.0.1-1",
     dependencies = {
       "lua == 5.1",
-      "santoku == 0.0.305-1",
+      "santoku >= 0.0.309-1",
     },
     build = {
       dependencies = {
-        "santoku-web == 0.0.400-1",
+        "santoku-web >= 0.0.401-1",
       }
     },
 
     server = {
       dependencies = {
         "lua == 5.1",
-        "santoku == 0.0.305-1",
-        "santoku-web == 0.0.400-1",
-        "santoku-mustache == 0.0.13-1",
-        "santoku-sqlite == 0.0.27-1",
-        "santoku-sqlite-migrate == 0.0.17-1",
-        "lsqlite3 == 0.9.6-1",
-        "argparse == 0.7.1-1",
+        "santoku >= 0.0.309-1",
+        "santoku-web >= 0.0.401-1",
+        "santoku-mustache >= 0.0.13-1",
+        "santoku-sqlite >= 0.0.28-1",
+        "santoku-sqlite-migrate >= 0.0.18-1",
+        "lsqlite3 >= 0.9.6-1",
+        "argparse >= 0.7.1-1",
       },
     },
 
@@ -57,11 +57,11 @@ return {
       files = true,
       dependencies = {
         "lua == 5.1",
-        "santoku == 0.0.305-1",
-        "santoku-web == 0.0.400-1",
-        "santoku-http == 0.0.18-1",
-        "santoku-sqlite == 0.0.27-1",
-        "santoku-sqlite-migrate == 0.0.17-1",
+        "santoku >= 0.0.309-1",
+        "santoku-web >= 0.0.401-1",
+        "santoku-http >= 0.0.18-1",
+        "santoku-sqlite >= 0.0.28-1",
+        "santoku-sqlite-migrate >= 0.0.18-1",
       },
       rules = {
         ["bundle$"] = {
