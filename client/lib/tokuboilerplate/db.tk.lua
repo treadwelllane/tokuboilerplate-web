@@ -1,10 +1,11 @@
 <%
   local fs = require("santoku.fs")
-  local iter = require("santoku.iter")
   local serialize = require("santoku.serialize")
-  t_migrations = serialize(iter.tabulate(iter.map(function (fp)
-    return fs.basename(fp), readfile(fp)
-  end, fs.files("res/client/migrations"))), true)
+  local migrations = {}
+  for fp in fs.files("res/client/migrations") do
+    migrations[fs.basename(fp)] = readfile(fp)
+  end
+  t_migrations = serialize(migrations, true)
 %>
 
 local sqlite_worker = require("santoku.web.sqlite.worker")
