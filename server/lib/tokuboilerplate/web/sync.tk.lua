@@ -9,7 +9,6 @@ if not auth then
   return
 end
 
-local session = db.get_or_create_session(auth)
 local args = ngx.req.get_uri_args()
 local since = tonumber(args.since) or 0
 
@@ -17,4 +16,4 @@ ngx.req.read_body()
 local changes = ngx.req.get_body_data()
 
 ngx.header.content_type = "application/json"
-ngx.say(db.sync(session, changes, since))
+ngx.say(db.sync(auth, changes, since))

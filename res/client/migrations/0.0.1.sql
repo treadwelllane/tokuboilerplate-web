@@ -1,11 +1,15 @@
+create view idgen as
+select lower(hex(randomblob(8))) as id;
+
+create table hlc_seq (id integer primary key);
+
 create table records (
-  id integer primary key,
-  data,
-  created_at real not null default (unixepoch('now', 'subsec')),
-  updated_at real not null default (unixepoch('now', 'subsec')),
-  deleted boolean not null default false,
+  sub text not null,
+  id text not null,
+  hlc text not null,
+  payload text not null,
   synced_at real,
-  hlc real not null default (unixepoch('now', 'subsec'))
+  primary key (sub, id)
 );
 
 create table settings (

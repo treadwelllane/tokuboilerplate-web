@@ -32,74 +32,39 @@ return function (db_file)
 
   db.exec([[
     create temporary table if not exists records_incoming (
-      id integer primary key,
-      data text,
-      created_at real,
-      updated_at real,
-      deleted integer,
-      hlc real
+      id text primary key,
+      hlc text,
+      payload text
     )
   ]])
 
   M.db = db
-
-  M.random_hex = db.getter("select lower(hex(randomblob(?)))")
-
-  local get_session = db.getter([[
-    select id, session_id from sessions where session_id = ?
-  ]], true)
-
-  local insert_session = db.inserter([[
-    insert into sessions (session_id) values (?) returning id
-  ]])
-
-  M.get_or_create_session = function (session_id)
-    local session = get_session(session_id)
-    if session then
-      return session.id
-    end
-    return insert_session(session_id)
-  end
 
   local clear_incoming = db.runner([[
     delete from records_incoming
   ]])
 
   local populate_incoming = db.runner([[
-    insert into records_incoming (id, data, created_at, updated_at, deleted, hlc)
+    insert into records_incoming (id, hlc, payload)
     select
       json_extract(value, '$.id'),
-      json_extract(value, '$.data'),
-      json_extract(value, '$.created_at'),
-      json_extract(value, '$.updated_at'),
-      json_extract(value, '$.deleted'),
-      json_extract(value, '$.hlc')
+      json_extract(value, '$.hlc'),
+      json_extract(value, '$.payload')
     from json_each(?1)
   ]])
 
-  local bump_incoming_hlc = db.runner([[
-    update records_incoming set hlc = hlc + max(0,
-      coalesce((select max(hlc) from records where session_id = ?1), 0)
-      - coalesce((select min(hlc) from records_incoming), 0)
-      + 0.001
-    )
-  ]])
-
   local insert_from_incoming = db.runner([[
-    insert or ignore into records (session_id, id, data, created_at, updated_at, deleted, hlc)
-    select ?1, id, data, created_at, updated_at, deleted, hlc
+    insert or ignore into records (sub, id, hlc, payload)
+    select ?1, id, hlc, payload
     from records_incoming
   ]])
 
   local update_from_incoming = db.runner([[
     update records set
-      data = i.data,
-      created_at = i.created_at,
-      updated_at = i.updated_at,
-      deleted = i.deleted,
-      hlc = i.hlc
+      hlc = i.hlc,
+      payload = i.payload
     from records_incoming i
-    where records.session_id = ?1
+    where records.sub = ?1
       and records.id = i.id
       and i.hlc > records.hlc
   ]])
@@ -107,27 +72,23 @@ return function (db_file)
   local get_changes_excluding_incoming = db.getter([[
     select json_group_array(json_object(
       'id', id,
-      'data', data,
-      'created_at', created_at,
-      'updated_at', updated_at,
-      'deleted', deleted,
-      'hlc', hlc))
+      'hlc', hlc,
+      'payload', json(payload)))
     from records
-    where session_id = ?1
+    where sub = ?1
       and hlc > ?2
       and id not in (select id from records_incoming)
   ]])
 
-  M.sync = function (session_id, changes, since)
+  M.sync = function (sub, changes, since)
     return db.transaction(function ()
       clear_incoming()
       if changes then
         populate_incoming(changes)
-        bump_incoming_hlc(session_id)
-        insert_from_incoming(session_id)
-        update_from_incoming(session_id)
+        insert_from_incoming(sub)
+        update_from_incoming(sub)
       end
-      return get_changes_excluding_incoming(session_id, since)
+      return get_changes_excluding_incoming(sub, since)
     end)
   end
 

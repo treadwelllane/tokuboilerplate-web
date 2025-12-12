@@ -25,6 +25,7 @@ local val = require("santoku.web.val")
 local err = require("santoku.error")
 local async = require("santoku.async")
 local mch = require("santoku.mustache")
+local rand = require("santoku.random")
 
 local Headers = js.Headers
 local Request = js.Request
@@ -62,29 +63,6 @@ return function (db, http)
         return db.get_numbers_with_error_state(page, done)
       end
       return db.complete_sync(server_changes, page, done)
-    end)
-  end
-
-  local function create_session_and_sync (page, done)
-    local req = Request:new("/session/create", val({ method = "POST" }))
-    return async.pipe(function (next)
-      return http.fetch(req, {}, next)
-    end, function (next, response)
-      if not response or not response.ok then
-        return next(false)
-      end
-      local auth = response.headers["authorization"]
-      if not auth then
-        return next(false)
-      end
-      return db.set_authorization(auth, function (ok0)
-        return next(ok0, auth)
-      end)
-    end, function (ok, auth)
-      if not ok then
-        return db.get_numbers_with_error_state(page, done)
-      end
-      return do_sync(auth, page, done)
     end)
   end
 
@@ -130,21 +108,6 @@ return function (db, http)
       return db.delete_session(done)
     end,
 
-    ["^/session/create$"] = function (req, _, _, done)
-      return async.pipe(function (next)
-        return http.fetch(req.raw, {}, next)
-      end, function (ok, response)
-        if not ok or not response or not response.ok then
-          return done(false, "Failed to create session")
-        end
-        local auth = response.headers["authorization"]
-        if not auth then
-          return done(false, "Failed to create session")
-        end
-        return db.save_session(auth, done)
-      end)
-    end,
-
     ["^/sync/status$"] = function (_, _, _, done)
       return db.get_sync_status(done)
     end,
@@ -162,7 +125,13 @@ return function (db, http)
         if auth then
           return do_sync(auth, page, done)
         end
-        return create_session_and_sync(page, done)
+        auth = rand.alnum(32)
+        return db.set_authorization(auth, function (ok2)
+          if not ok2 then
+            return db.get_numbers_with_error_state(page, done)
+          end
+          return do_sync(auth, page, done)
+        end)
       end)
     end,
 
