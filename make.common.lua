@@ -3,6 +3,7 @@ local num = require("santoku.num")
 local str = require("santoku.string")
 local arr = require("santoku.array")
 local sys = require("santoku.system")
+local env = require("santoku.env")
 
 -- iOS icon/splash screen sizes (width, height, pixel ratio)
 local icon_sizes = { 192, 512 }
@@ -81,17 +82,45 @@ return {
     },
 
     nginx = {
+      ssl_self_signed = true,
+      ssl_port = "8443",
       domain = "localhost",
       port = "8080",
       workers = "auto",
       modules = {
         "tokuboilerplate.web.init",
-        "tokuboilerplate.web.session-create",
         "tokuboilerplate.web.sync",
       },
     },
 
     configure = function (submake, envs, register_public_file)
+      local server_env = envs.server
+      local nginx_cfg = envs.root.nginx
+      if server_env then
+        local env_cert = env.var("TOKUBOILERPLATE_SSL_CERT", nil)
+        local env_key = env.var("TOKUBOILERPLATE_SSL_KEY", nil)
+        if env_cert and env_key then
+          nginx_cfg.ssl_cert = env_cert
+          nginx_cfg.ssl_key = env_key
+        elseif nginx_cfg.ssl_self_signed then
+          local ssl_dir = fs.join(server_env.work_dir, "ssl")
+          local ssl_cert = fs.join(ssl_dir, "localhost.crt")
+          local ssl_key = fs.join(ssl_dir, "localhost.key")
+          if not (fs.exists(ssl_cert) and fs.exists(ssl_key)) then
+            fs.mkdirp(ssl_dir)
+            sys.execute({
+              "openssl", "req", "-x509", "-nodes", "-days", "365",
+                "-newkey", "rsa:2048",
+                "-keyout", ssl_key,
+                "-out", ssl_cert,
+                "-subj", "/CN=localhost/O=DEV ONLY - NOT FOR PRODUCTION",
+                "-addext", "subjectAltName=DNS:localhost,IP:127.0.0.1"
+            })
+          end
+          nginx_cfg.ssl_cert = ssl_cert
+          nginx_cfg.ssl_key = ssl_key
+        end
+      end
       local client_env = envs.client
       if not client_env then return end
       local function pwa_hashed(filename)
